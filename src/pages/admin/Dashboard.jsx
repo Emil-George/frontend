@@ -249,7 +249,7 @@ function TenantsPlaceholder() {
       setError(null);
       try {
         // Call the new API function. We'll fetch the first 10 for now.
-        const response = await adminAPI.getAllTenants({ page: 0, size: 10 });
+        const response = await adminAPI.getTenants({ page: 0, size: 10 });
         
         // The backend response nests the list under a "tenants" key.
         setTenants(response.data.tenants || []);
@@ -410,7 +410,7 @@ function MaintenancePlaceholder() {
           sortDir: sortDir,
         };
 
-        const response = await tenantAPI.getMaintenanceRequests(params);
+        const response = await adminAPI.getMaintenanceRequests(params);
         setRequests(response.data.requests || []);
 
       } catch (err) {
