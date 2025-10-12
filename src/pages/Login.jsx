@@ -207,13 +207,13 @@ function Login() {
           <CardContent className="space-y-3">
             <div className="text-sm">
               <p className="font-medium mb-1">Admin Account:</p>
-              <p className="text-muted-foreground">Email: admin@nbjgroup.com</p>
-              <p className="text-muted-foreground">Password: admin123</p>
+              <p className="text-muted-foreground">Email: main.admin@nbjgroup.com</p>
+              <p className="text-muted-foreground">Password: Admin123!</p>
             </div>
             <div className="text-sm">
               <p className="font-medium mb-1">Tenant Account:</p>
-              <p className="text-muted-foreground">Email: john.doe@email.com</p>
-              <p className="text-muted-foreground">Password: password123</p>
+              <p className="text-muted-foreground">Email: testuser@gmail.com</p>
+              <p className="text-muted-foreground">Password: Test@123</p>
             </div>
           </CardContent>
         </Card>

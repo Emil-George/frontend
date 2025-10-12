@@ -19,7 +19,6 @@ import {
   Camera,
   Paperclip
 } from 'lucide-react';
-import { api } from '../../services/api';
 
 const PRIORITY_OPTIONS = [
   { value: 'low', label: 'Low', color: 'bg-green-100 text-green-800' },

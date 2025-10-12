@@ -18,6 +18,7 @@ import {
 import { useAuth } from '../../contexts/AuthContext';
 import TenantLayout from '../../components/layouts/TenantLayout';
 import TenantDashboardComponents from '../../components/dashboard/TenantDashboardComponents';
+import MaintenanceRequestForm from '../../components/maintenance/MaintenanceRequestForm';
 import '../../App.css';
 
 function TenantDashboard() {
@@ -143,7 +144,9 @@ function MaintenancePlaceholder() {
       <h1 className="text-3xl font-bold tracking-tight">Maintenance Requests</h1>
       <Card>
         <CardContent className="p-6">
-          <p className="text-muted-foreground">Maintenance request features coming soon...</p>
+          <div>
+            <MaintenanceRequestForm />
+          </div>
         </CardContent>
       </Card>
     </div>
