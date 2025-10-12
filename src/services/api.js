@@ -1,21 +1,21 @@
 import axios from 'axios';
 
-// API base URL
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
-
-// Create axios instance
+// --- 1. API Configuration ---
+// Create a single, central axios instance. This will be used for all API calls.
 const api = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 10000,
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8080/api',
+  timeout: 10000, // 10-second timeout
   headers: {
     'Content-Type': 'application/json',
   },
-});
+} );
 
-// Request interceptor to add auth token
+// --- 2. Interceptors (Your existing code is perfect) ---
+
+// Request Interceptor: Automatically add the JWT token to every outgoing request.
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('token'); // Or wherever you store your token
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -26,22 +26,26 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor for error handling
+// Response Interceptor: Handle 401 Unauthorized errors globally (e.g., token expired).
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Token expired or invalid
+      // Clear stale authentication data
       localStorage.removeItem('token');
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('user');
+      // Redirect to the login page
       window.location.href = '/login';
     }
     return Promise.reject(error);
   }
 );
 
-// Auth API
+
+// --- 3. API Function Definitions ---
+// Group all API functions into logical objects. They all use the single `api` instance defined above.
+
 export const authAPI = {
   login: (credentials) => api.post('/auth/login', credentials),
   register: (userData) => api.post('/auth/register', userData),
@@ -51,11 +55,9 @@ export const authAPI = {
   validateToken: (token) => api.post('/auth/validate', null, { params: { token } }),
 };
 
-// Admin API
 export const adminAPI = {
   // Tenant management
   getTenants: (params) => api.get('/tenants', { params }),
-  getAllTenants: (params) => api.get('/tenants', { params }),
   getTenant: (id) => api.get(`/tenants/${id}`),
   createTenant: (tenantData) => api.post('/tenants', tenantData),
   updateTenant: (id, tenantData) => api.put(`/tenants/${id}`, tenantData),
@@ -63,27 +65,17 @@ export const adminAPI = {
   
   // Payment management
   getPayments: (params) => api.get('/admin/payments', { params }),
-  getPayment: (id) => api.get(`/admin/payments/${id}`),
   updatePaymentStatus: (id, status) => api.put(`/admin/payments/${id}/status`, { status }),
   createStripeConnectAccount: () => api.post('/stripe/create-connect-account'),
   
   // Maintenance requests
-  getMaintenanceRequests: (params) => api.get('/admin/maintenance-requests', { params }),
-  getMaintenanceRequest: (id) => api.get(`/admin/maintenance-requests/${id}`),
-  assignMaintenanceRequest: (id, assignee) => api.put(`/admin/maintenance-requests/${id}/assign`, { assignedTo: assignee }),
-  updateMaintenanceStatus: (id, status) => api.put(`/admin/maintenance-requests/${id}/status`, { status }),
-  
-  // Lease agreements
-  getLeaseAgreements: (params) => api.get('/admin/lease-agreements', { params }),
-  getLeaseAgreement: (id) => api.get(`/admin/lease-agreements/${id}`),
-  createLeaseAgreement: (leaseData) => api.post('/admin/lease-agreements', leaseData),
-  updateLeaseAgreement: (id, leaseData) => api.put(`/admin/lease-agreements/${id}`, leaseData),
+  getMaintenanceRequests: (params) => api.get('/maintenance', { params }), // Corrected from /admin/maintenance-requests
+  updateMaintenanceStatus: (id, updateData) => api.put(`/maintenance/${id}/status`, updateData),
   
   // Dashboard
   getDashboardStats: () => api.get('/admin/dashboard/stats'),
 };
 
-// Tenant API
 export const tenantAPI = {
   // Profile management
   getProfile: () => api.get('/tenant/profile'),
@@ -91,28 +83,18 @@ export const tenantAPI = {
   
   // Payments
   getPayments: (params) => api.get('/tenant/payments', { params }),
-  getPayment: (id) => api.get(`/tenant/payments/${id}`),
   submitPayment: (paymentData) => api.post('/tenant/payments', paymentData),
   
   // Maintenance requests
-  getMaintenanceRequests: (params) => api.get('/maintenance', { params }),
-  getMaintenanceRequest: (id) => api.get(`/maintenance/${id}`),
-  deleteMaintenanceRequest: (id) => api.delete(`/maintenance/${id}`),
   getMyMaintenanceRequests: (params) => api.get('/maintenance/my-requests', { params }),
   createMaintenanceRequest: (requestData) => api.post('/maintenance', requestData),
-  updateMaintenanceRequest: (id, requestData) => api.put(`/maintenance/${id}`, requestData),
-  updateMaintenanceRequestStatus: (id, updateData) => api.put(`/maintenance/${id}/status`, updateData),
-  
-  // Lease agreements
-  getLeaseAgreements: (params) => api.get('/tenant/lease-agreements', { params }),
-  getLeaseAgreement: (id) => api.get(`/tenant/lease-agreements/${id}`),
-  signLeaseAgreement: (id) => api.post(`/tenant/lease-agreements/${id}/sign`),
+  deleteMaintenanceRequest: (id) => api.delete(`/maintenance/${id}`),
   
   // Dashboard
-  getDashboardStats: () => api.get('/tenant/dashboard/stats'),
+  // CORRECTED: This now correctly uses the `api` constant defined in this file.
+  getTenantDashboardData: () => api.get('/dashboard/tenant'),
 };
 
-// File API
 export const fileAPI = {
   upload: (file, type = 'general') => {
     const formData = new FormData();
@@ -120,87 +102,18 @@ export const fileAPI = {
     formData.append('type', type);
     
     return api.post('/files/upload', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
+      headers: { 'Content-Type': 'multipart/form-data' },
     });
   },
-  
-  download: (fileId) => api.get(`/files/${fileId}/download`, {
-    responseType: 'blob',
-  }),
-  
+  download: (fileId) => api.get(`/files/${fileId}/download`, { responseType: 'blob' }),
   getFileUrl: (fileId) => `${API_BASE_URL}/files/${fileId}`,
 };
 
-// User API
 export const userAPI = {
   getProfile: () => api.get('/users/profile'),
   updateProfile: (profileData) => api.put('/users/profile', profileData),
   changePassword: (passwordData) => api.put('/users/change-password', passwordData),
 };
 
-// Utility functions
-export const apiUtils = {
-  // Handle API errors
-  handleError: (error) => {
-    if (error.response) {
-      // Server responded with error status
-      return {
-        message: error.response.data?.message || 'An error occurred',
-        status: error.response.status,
-        data: error.response.data,
-      };
-    } else if (error.request) {
-      // Request was made but no response received
-      return {
-        message: 'Network error - please check your connection',
-        status: 0,
-        data: null,
-      };
-    } else {
-      // Something else happened
-      return {
-        message: error.message || 'An unexpected error occurred',
-        status: 0,
-        data: null,
-      };
-    }
-  },
-
-  // Format API response
-  formatResponse: (response) => {
-    return {
-      data: response.data,
-      status: response.status,
-      headers: response.headers,
-    };
-  },
-
-  // Create query string from params
-  createQueryString: (params) => {
-    const searchParams = new URLSearchParams();
-    
-    Object.keys(params).forEach(key => {
-      if (params[key] !== null && params[key] !== undefined && params[key] !== '') {
-        searchParams.append(key, params[key]);
-      }
-    });
-    
-    return searchParams.toString();
-  },
-
-  // Download file from blob response
-  downloadFile: (blob, filename) => {
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
-  },
-};
-
-export default api;
+// Note: There is no need for a default export. 
+// Components should import the specific object they need, like `import { tenantAPI } from '...'`.
