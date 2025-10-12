@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState,useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -20,6 +20,9 @@ import {
   MessageCircle
 } from 'lucide-react';
 import { format, addDays, subDays } from 'date-fns';
+import MaintenanceRequestDetails from '../maintenance/MaintenanceRequestDetails';
+import { tenantAPI } from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
 
 // Mock data
 const paymentHistory = [
@@ -99,7 +102,7 @@ function TenantDashboardComponents() {
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="payments">Payments</TabsTrigger>
-          <TabsTrigger value="maintenance">Maintenance</TabsTrigger>
+          <TabsTrigger value="maintenance">Maintenance Status</TabsTrigger>
           <TabsTrigger value="calendar">Calendar</TabsTrigger>
         </TabsList>
 
@@ -412,61 +415,30 @@ function PaymentsTab() {
 }
 
 function MaintenanceTab() {
+    const { user } = useAuth();
+  const [loadingRequest, setLoadingRequest] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState(null);
+  const [requestError, setRequestError] = useState(null);
+
+    useEffect(() => {
+    const fetchRequests = async () => {
+      setLoadingRequest(true);
+      setRequestError(null);
+      try {
+        const res = await tenantAPI.getMyMaintenanceRequests({ tenantId: user?.id });
+        // Show the most recent request, or handle as needed
+        const latest = Array.isArray(res.data) ? res.data[0] : (res.data?.requests?.[0] || res.data?.[0]);
+        setSelectedRequest(latest || null);
+      } catch (err) {
+        setRequestError(err?.response?.data?.message || err.message || 'Failed to fetch request');
+      } finally {
+        setLoadingRequest(false);
+      }
+    };
+    if (user?.id) fetchRequests();
+  }, [user?.id]);
   return (
     <>
-      {/* Maintenance Summary */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg">Active Requests</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-center">
-              <div className="text-3xl font-bold">1</div>
-              <p className="text-sm text-muted-foreground">Currently in progress</p>
-              <Button size="sm" className="mt-3 w-full">
-                <Wrench className="h-4 w-4 mr-2" />
-                New Request
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg">Response Time</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-center">
-              <div className="text-3xl font-bold">2.1</div>
-              <p className="text-sm text-muted-foreground">Average days</p>
-              <div className="flex items-center justify-center gap-1 mt-2">
-                <TrendingUp className="h-4 w-4 text-green-600" />
-                <span className="text-xs text-green-600">Faster than average</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg">Satisfaction</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-center">
-              <div className="flex items-center justify-center gap-1 mb-2">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <Star key={star} className="h-5 w-5 fill-yellow-400 text-yellow-400" />
-                ))}
-              </div>
-              <div className="text-2xl font-bold">4.5</div>
-              <p className="text-sm text-muted-foreground">Average rating</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Maintenance History */}
       <Card>
         <CardHeader>
           <CardTitle>Maintenance History</CardTitle>
@@ -474,77 +446,13 @@ function MaintenanceTab() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {maintenanceHistory.map((request) => (
-              <div key={request.id} className="border rounded-lg p-4">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h4 className="text-sm font-medium">{request.title}</h4>
-                      <Badge 
-                        variant={
-                          request.priority === 'high' ? 'destructive' : 
-                          request.priority === 'medium' ? 'default' : 'secondary'
-                        }
-                        className="text-xs"
-                      >
-                        {request.priority}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground mb-2">{request.description}</p>
-                    <p className="text-xs text-muted-foreground">
-                      Submitted: {format(new Date(request.date), 'MMM dd, yyyy')}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {request.status === 'completed' && (
-                      <CheckCircle className="h-5 w-5 text-green-500" />
-                    )}
-                    {request.status === 'in_progress' && (
-                      <Clock className="h-5 w-5 text-blue-500" />
-                    )}
-                    <Badge 
-                      variant={request.status === 'completed' ? 'default' : 'secondary'}
-                      className="text-xs"
-                    >
-                      {request.status.replace('_', ' ')}
-                    </Badge>
-                  </div>
-                </div>
-
-                {request.status === 'in_progress' && (
-                  <div className="bg-blue-50 dark:bg-blue-950 p-3 rounded-md">
-                    <p className="text-sm font-medium">Assigned to: {request.assignedTo}</p>
-                    <p className="text-xs text-muted-foreground">
-                      Estimated completion: {format(new Date(request.estimatedCompletion), 'MMM dd, yyyy')}
-                    </p>
-                  </div>
-                )}
-
-                {request.status === 'completed' && request.rating && (
-                  <div className="bg-green-50 dark:bg-green-950 p-3 rounded-md">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-sm font-medium">Your Rating:</span>
-                      <div className="flex">
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <Star 
-                            key={star} 
-                            className={`h-4 w-4 ${
-                              star <= request.rating 
-                                ? 'fill-yellow-400 text-yellow-400' 
-                                : 'text-gray-300'
-                            }`} 
-                          />
-                        ))}
-                      </div>
-                    </div>
-                    <p className="text-sm text-muted-foreground italic">"{request.feedback}"</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Completed: {format(new Date(request.completedDate), 'MMM dd, yyyy')}
-                    </p>
-                  </div>
-                )}
-              </div>
-            ))}
+            {loadingRequest ? (
+              <div className="mt-4 text-blue-600">Loading request details...</div>
+            ) : requestError ? (
+              <div className="mt-4 text-red-600">{requestError}</div>
+            ) : (
+              <MaintenanceRequestDetails request={selectedRequest} />
+            )}
           </div>
         </CardContent>
       </Card>

@@ -54,16 +54,18 @@ export const authAPI = {
 // Admin API
 export const adminAPI = {
   // Tenant management
-  getTenants: (params) => api.get('/admin/tenants', { params }),
-  getTenant: (id) => api.get(`/admin/tenants/${id}`),
-  createTenant: (tenantData) => api.post('/admin/tenants', tenantData),
-  updateTenant: (id, tenantData) => api.put(`/admin/tenants/${id}`, tenantData),
-  deleteTenant: (id) => api.delete(`/admin/tenants/${id}`),
+  getTenants: (params) => api.get('/tenants', { params }),
+  getAllTenants: (params) => api.get('/tenants', { params }),
+  getTenant: (id) => api.get(`/tenants/${id}`),
+  createTenant: (tenantData) => api.post('/tenants', tenantData),
+  updateTenant: (id, tenantData) => api.put(`/tenants/${id}`, tenantData),
+  deleteTenant: (id) => api.delete(`/tenants/${id}`),
   
   // Payment management
   getPayments: (params) => api.get('/admin/payments', { params }),
   getPayment: (id) => api.get(`/admin/payments/${id}`),
   updatePaymentStatus: (id, status) => api.put(`/admin/payments/${id}/status`, { status }),
+  createStripeConnectAccount: () => api.post('/stripe/create-connect-account'),
   
   // Maintenance requests
   getMaintenanceRequests: (params) => api.get('/admin/maintenance-requests', { params }),
@@ -93,10 +95,13 @@ export const tenantAPI = {
   submitPayment: (paymentData) => api.post('/tenant/payments', paymentData),
   
   // Maintenance requests
-  getMaintenanceRequests: (params) => api.get('/tenant/maintenance-requests', { params }),
-  getMaintenanceRequest: (id) => api.get(`/tenant/maintenance-requests/${id}`),
-  createMaintenanceRequest: (requestData) => api.post('/tenant/maintenance-requests', requestData),
-  updateMaintenanceRequest: (id, requestData) => api.put(`/tenant/maintenance-requests/${id}`, requestData),
+  getMaintenanceRequests: (params) => api.get('/maintenance', { params }),
+  getMaintenanceRequest: (id) => api.get(`/maintenance/${id}`),
+  deleteMaintenanceRequest: (id) => api.delete(`/maintenance/${id}`),
+  getMyMaintenanceRequests: (params) => api.get('/maintenance/my-requests', { params }),
+  createMaintenanceRequest: (requestData) => api.post('/maintenance', requestData),
+  updateMaintenanceRequest: (id, requestData) => api.put(`/maintenance/${id}`, requestData),
+  updateMaintenanceRequestStatus: (id, updateData) => api.put(`/maintenance/${id}/status`, updateData),
   
   // Lease agreements
   getLeaseAgreements: (params) => api.get('/tenant/lease-agreements', { params }),

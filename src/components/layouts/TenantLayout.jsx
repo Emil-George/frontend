@@ -51,7 +51,7 @@ const navigation = [
     badge: '1'
   },
   {
-    name: 'Maintenance',
+    name: 'Request Maintenance',
     href: '/tenant/maintenance',
     icon: Wrench,
     current: false,

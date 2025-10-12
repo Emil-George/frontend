@@ -27,9 +27,11 @@ import {
   Timer,
   Edit,
   Save,
+  Trash2 ,
   X
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { tenantAPI } from '../../services/api';
 
 const STATUS_CONFIG = {
   PENDING: { color: 'bg-yellow-100 text-yellow-800', icon: Timer },
@@ -50,8 +52,40 @@ function MaintenanceRequestDetails({
   currentUser, 
   onStatusUpdate, 
   onFeedbackSubmit,
-  isUpdating = false 
+  isUpdating = false,
+  onDeleteSuccess 
 }) {
+  if (!request) {
+    return (
+      <div className="p-6 text-center text-muted-foreground">
+        <p>No maintenance request selected or available.</p>
+      </div>
+    );
+  }
+
+    const handleDelete = async () => {
+    // Always confirm a destructive action
+    if (!window.confirm(`Are you sure you want to permanently delete request: "${request.title}"?`)) {
+      return;
+    }
+
+    try {
+      // Call the API to delete the request
+      await tenantAPI.deleteMaintenanceRequest(request.id);
+      
+      alert('Request deleted successfully!');
+
+      // If the parent component provided a success handler, call it.
+      // This tells the parent to remove the item from its list.
+      if (onDeleteSuccess) {
+        onDeleteSuccess(request.id);
+      }
+    } catch (error) {
+      console.error('Failed to delete maintenance request:', error);
+      alert(error?.response?.data?.message || 'Failed to delete the request.');
+    }
+  };
+
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({
     status: request.status,
@@ -71,14 +105,17 @@ function MaintenanceRequestDetails({
 
   const StatusIcon = STATUS_CONFIG[request.status]?.icon || AlertTriangle;
 
-  const handleSaveEdit = async () => {
-    try {
-      await onStatusUpdate(request.id, editData);
-      setIsEditing(false);
-    } catch (error) {
-      console.error('Error updating request:', error);
-    }
-  };
+const handleSaveEdit = async () => {
+  try {
+    // This will now call the handleRequestUpdate function in the parent
+    await onStatusUpdate(request.id, editData); 
+    setIsEditing(false); // This will only run if the above call succeeds
+  } catch (error) {
+    // If handleRequestUpdate throws an error, this catch block will run
+    console.error('Error updating request:', error);
+    // The UI will remain in edit mode, allowing the user to try again.
+  }
+};
 
   const handleCancelEdit = () => {
     setEditData({
@@ -142,7 +179,8 @@ function MaintenanceRequestDetails({
               </div>
               <div className="flex items-center gap-2">
                 <Badge className={STATUS_CONFIG[request.status]?.color}>
-                  {request.status.replace('_', ' ')}
+                   {/* Only call .replace() if request.status is a valid string */}
+                   {request.status ? request.status.replace('_', ' ') : 'N/A'}
                 </Badge>
                 <Badge className={PRIORITY_CONFIG[request.priority]?.color}>
                   {request.priority} Priority
@@ -153,15 +191,27 @@ function MaintenanceRequestDetails({
             
             {isAdmin && (
               <div className="flex gap-2">
-                {!isEditing ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsEditing(true)}
-                  >
-                    <Edit className="h-4 w-4 mr-2" />
-                    Edit
-                  </Button>
+                {!isEditing ?  (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsEditing(true)}
+                    >
+                      <Edit className="h-4 w-4 mr-2" />
+                      Edit
+                    </Button>
+                    
+                    {/* NEW: Delete Button */}
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={handleDelete}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete
+                    </Button>
+                  </>
                 ) : (
                   <>
                     <Button
@@ -201,7 +251,7 @@ function MaintenanceRequestDetails({
                   <div className="flex items-center gap-2 mt-1">
                     <Calendar className="h-4 w-4 text-muted-foreground" />
                     <span className="text-sm">
-                      {format(new Date(request.createdAt), 'MMM dd, yyyy')}
+                      {request.createdAt ? format(new Date(request.createdAt), 'MMM dd, yyyy') : 'N/A'}
                     </span>
                   </div>
                 </div>
@@ -211,7 +261,7 @@ function MaintenanceRequestDetails({
                   <div className="flex items-center gap-2 mt-1">
                     <Clock className="h-4 w-4 text-muted-foreground" />
                     <span className="text-sm">
-                      {format(new Date(request.updatedAt), 'MMM dd, yyyy')}
+                     {request.updatedAt ? format(new Date(request.updatedAt), 'MMM dd, yyyy') : 'N/A'}
                     </span>
                   </div>
                 </div>
@@ -224,11 +274,13 @@ function MaintenanceRequestDetails({
               <div className="flex items-start gap-3">
                 <Avatar>
                   <AvatarFallback>
-                    {request.tenant.name.split(' ').map(n => n[0]).join('')}
+                    {request.tenant && request.tenant.name
+                      ? request.tenant.name.split(' ').map(n => n[0]).join('')
+                      : ''}
                   </AvatarFallback>
                 </Avatar>
                 <div className="space-y-1">
-                  <p className="text-sm font-medium">{request.tenant.name}</p>
+                  <p className="text-sm font-medium">{request.tenant?.name || 'N/A'}</p>
                   <div className="flex items-center gap-1 text-xs text-muted-foreground">
                     <Mail className="h-3 w-3" />
                     {request.tenant.email}
@@ -463,7 +515,7 @@ function MaintenanceRequestDetails({
               <div>
                 <p className="text-sm font-medium">Request Created</p>
                 <p className="text-xs text-muted-foreground">
-                  {format(new Date(request.createdAt), 'MMM dd, yyyy \'at\' h:mm a')}
+                  {request.createdAt ? format(new Date(request.createdAt), 'MMM dd, yyyy') : 'N/A'}
                 </p>
               </div>
             </div>
@@ -474,7 +526,7 @@ function MaintenanceRequestDetails({
                 <div>
                   <p className="text-sm font-medium">Status Updated</p>
                   <p className="text-xs text-muted-foreground">
-                    Changed to {request.status.replace('_', ' ')}
+                    Changed to {request.status ? request.status.replace('_', ' ') : 'N/A'}
                   </p>
                 </div>
               </div>
@@ -486,7 +538,7 @@ function MaintenanceRequestDetails({
                 <div>
                   <p className="text-sm font-medium">Request Completed</p>
                   <p className="text-xs text-muted-foreground">
-                    {format(new Date(request.completedAt), 'MMM dd, yyyy \'at\' h:mm a')}
+                    {request.completedAt ? format(new Date(request.completedAt), 'MMM dd, yyyy \'at\' h:mm a') : ''}
                   </p>
                 </div>
               </div>

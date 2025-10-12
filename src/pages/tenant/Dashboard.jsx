@@ -138,14 +138,43 @@ function PaymentsPlaceholder() {
   );
 }
 
+import { tenantAPI } from '../../services/api';
+import { useState } from 'react';
+
 function MaintenancePlaceholder() {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
+
+
+  const handleSubmit = async (formData) => {
+    setIsSubmitting(true);
+    setSubmitSuccess(false);
+    setSubmitError(null);
+    try {
+      await tenantAPI.createMaintenanceRequest(formData);
+      setSubmitSuccess(true);
+    } catch (error) {
+      setSubmitError(error?.response?.data?.message || error.message || 'Failed to submit request');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold tracking-tight">Maintenance Requests</h1>
+      <h1 className="text-3xl font-bold tracking-tight">New Request</h1>
       <Card>
         <CardContent className="p-6">
           <div>
-            <MaintenanceRequestForm />
+            <MaintenanceRequestForm onSubmit={handleSubmit} isSubmitting={isSubmitting} />
+            {/* Optionally show success/error messages */}
+            {submitSuccess && (
+              <div className="mt-4 text-green-600">Request submitted successfully!</div>
+            )}
+            {submitError && (
+              <div className="mt-4 text-red-600">{submitError}</div>
+            )}
           </div>
         </CardContent>
       </Card>
