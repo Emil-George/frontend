@@ -32,6 +32,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+  DialogClose,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 function AdminDashboard() {
   const { user, logout } = useAuth();
@@ -240,6 +251,9 @@ function TenantsPlaceholder() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const [isEditing, setIsEditing] = useState(false);
+  const [selectedTenant, setSelectedTenant] = useState(null);
+  const [editFormData, setEditFormData] = useState({});
   // We can add state for pagination later if needed
   // const [page, setPage] = useState(0);
 
@@ -267,11 +281,11 @@ function TenantsPlaceholder() {
 
       const handleStatusChange = async (tenantId, newStatus) => {
     try {
-      const updatedTenant = await adminAPI.updateTenant(tenantId, { status: newStatus });
+      const updatedTenant = await adminAPI.updateTenant(tenantId.id, { status: newStatus });
       
       // Update the tenant in the local state to reflect the change immediately
       setTenants(currentTenants =>
-        currentTenants.map(t => (t.id === tenantId ? updatedTenant.data : t))
+        currentTenants.map(t => (t.id === tenantId.id ? updatedTenant.data : t))
       );
       alert('Tenant status updated successfully!');
 
@@ -281,69 +295,129 @@ function TenantsPlaceholder() {
     }
   };
 
-    const handleEdit = (tenant) => {
-    const newPhoneNumber = prompt("Enter new phone number for " + tenant.user.firstName + ":", tenant.user.phoneNumber);
-    if (newPhoneNumber) {
-      adminAPI.updateTenant(tenant.id, { phoneNumber: newPhoneNumber })
-        .then(updatedTenant => {
-          setTenants(currentTenants =>
-            currentTenants.map(t => (t.id === tenant.id ? updatedTenant.data : t))
-          );
-          alert('Phone number updated!');
-        })
-        .catch(err => alert('Failed to update phone number.'));
+
+
+    const handleOpenEditModal = (tenant) => {
+    setSelectedTenant(tenant);
+    setEditFormData({
+      firstName: tenant.user.firstName,
+      lastName: tenant.user.lastName,
+      email: tenant.user.email,
+      phoneNumber: tenant.user.phoneNumber,
+      propertyAddress: tenant.propertyAddress,
+    });
+    setIsEditing(true);
+  };
+
+   const handleEditFormChange = (e) => {
+    const { name, value } = e.target;
+    setEditFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSaveChanges = async () => {
+    if (!selectedTenant) return;
+    try {
+      const response = await adminAPI.updateTenant(selectedTenant.id, editFormData);
+      const updatedTenant = response.data;
+      
+      setTenants(current => current.map(t => (t.id === updatedTenant.id ? updatedTenant : t)));
+      setIsEditing(false);
+      setSelectedTenant(null);
+      alert('Tenant updated successfully!');
+    } catch (err) {
+      console.error("Failed to update tenant:", err);
+      alert('Failed to update tenant.');
     }
   };
 
+    const handleDelete = async (tenantId) => {
+    if (window.confirm("Are you sure you want to delete this tenant? This action cannot be undone.")) {
+      try {
+        await adminAPI.deleteTenant(tenantId);
+        setTenants(current => current.filter(t => t.id !== tenantId));
+        alert('Tenant deleted successfully.');
+      } catch (err) {
+        console.error("Failed to delete tenant:", err);
+        alert('Failed to delete tenant.');
+      }
+    }
+  };
+
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>All Tenants</CardTitle>
-        <CardDescription>A list of all tenants in the system.</CardDescription>
-      </CardHeader>
+<Card>
+      {/* ... CardHeader ... */}
       <CardContent>
-        {loading ? (
-          <p>Loading tenants...</p>
-        ) : error ? (
-          <p className="text-red-500">{error}</p>
-        ) : (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Name</TableHead>
-          <TableHead>Property Address</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead className="text-right">Actions</TableHead> {/* New Column */}
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {tenants.map((tenant) => (
-          <TableRow key={tenant.id}>
-            <TableCell>{tenant.user.firstName} {tenant.user.lastName}</TableCell>
-            <TableCell>{tenant.propertyAddress}</TableCell>
-            <TableCell>
-              <Badge variant={tenant.status === 'ACTIVE' ? 'default' : 'secondary'}>
-                {tenant.status}
-              </Badge>
-            </TableCell>
-            {/* New Actions Cell */}
-            <TableCell className="text-right space-x-2">
-              <Button size="sm" onClick={() => handleEdit(tenant)}>Edit</Button>
-              {tenant.status === 'PENDING' || tenant.status==='INACTIVE' && (
-                <Button size="sm" variant="outline" onClick={() => handleStatusChange(tenant.id, 'ACTIVE')}>
-                  Activate
-                </Button>
-              )}
-              {tenant.status === 'ACTIVE' && (
-                <Button size="sm" variant="outline" onClick={() => handleStatusChange(tenant.id, 'INACTIVE')}>
-                  Deactivate
-                </Button>
-              )}
-            </TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        {loading ? <p>Loading...</p> : error ? <p>{error}</p> : (
+          <>
+            <Table>
+              {/* ... TableHeader ... */}
+              <TableBody>
+                {tenants.map((tenant) => (
+                  <TableRow key={tenant.id}>
+                    <TableCell>{tenant.user.firstName} {tenant.user.lastName}</TableCell>
+                    <TableCell>{tenant.propertyAddress}</TableCell>
+                    <TableCell>
+                      <Badge variant={tenant.status === 'ACTIVE' ? 'default' : 'secondary'}>
+                        {tenant.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right space-x-2">
+                      {/* Edit Button that opens the modal */}
+                      <Button size="sm" onClick={() => handleOpenEditModal(tenant)}>Edit</Button>
+                      
+                      {/* Delete Button */}
+                      <Button size="sm" variant="destructive" onClick={() => handleDelete(tenant.id)}>Delete</Button>
+
+                      {/* Status Toggle Buttons */}
+                      {tenant.status === 'ACTIVE' ? (
+                        <Button size="sm" variant="outline" onClick={() => handleStatusChange(tenant, 'INACTIVE')}>Deactivate</Button>
+                      ) : (
+                        <Button size="sm" variant="outline" onClick={() => handleStatusChange(tenant, 'ACTIVE')}>Activate</Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+
+            {/* --- NEW: EDIT MODAL DIALOG --- */}
+            <Dialog open={isEditing} onOpenChange={setIsEditing}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Edit Tenant: {selectedTenant?.user.firstName}</DialogTitle>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="firstName" className="text-right">First Name</Label>
+                    <Input id="firstName" name="firstName" value={editFormData.firstName || ''} onChange={handleEditFormChange} className="col-span-3" />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="lastName" className="text-right">Last Name</Label>
+                    <Input id="lastName" name="lastName" value={editFormData.lastName || ''} onChange={handleEditFormChange} className="col-span-3" />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="email" className="text-right">Email</Label>
+                    <Input id="email" name="email" type="email" value={editFormData.email || ''} onChange={handleEditFormChange} className="col-span-3" />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="phoneNumber" className="text-right">Phone</Label>
+                    <Input id="phoneNumber" name="phoneNumber" value={editFormData.phoneNumber || ''} onChange={handleEditFormChange} className="col-span-3" />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="propertyAddress" className="text-right">Address</Label>
+                    <Input id="propertyAddress" name="propertyAddress" value={editFormData.propertyAddress || ''} onChange={handleEditFormChange} className="col-span-3" />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <DialogClose asChild>
+                    <Button type="button" variant="secondary">Cancel</Button>
+                  </DialogClose>
+                  <Button type="button" onClick={handleSaveChanges}>Save Changes</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </>
         )}
       </CardContent>
     </Card>
@@ -447,7 +521,7 @@ function MaintenancePlaceholder() {
     const handleRequestUpdate = async (requestId, updateData) => {
     try {
       // Call the new API function
-      const response = await tenantAPI.updateMaintenanceRequestStatus(requestId, updateData);
+      const response = await adminAPI.updateMaintenanceStatus(requestId, updateData);
       const updatedRequest = response.data;
 
       // Update the 'requests' list to reflect the changes
