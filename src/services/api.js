@@ -65,6 +65,8 @@ export const adminAPI = {
   
   // Payment management
   getPayments: (params) => api.get('/admin/payments', { params }),
+  getPaymentHistory: (params) => api.get("/admin/payments/history", { params }),
+  getStripeAccountStatus: () => api.get("/stripe/account-status"),
   updatePaymentStatus: (id, status) => api.put(`/admin/payments/${id}/status`, { status }),
   createStripeConnectAccount: () => api.post('/stripe/create-connect-account'),
   

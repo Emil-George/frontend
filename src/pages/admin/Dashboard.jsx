@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react'; 
 import { Routes, Route } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,7 +19,6 @@ import { useAuth } from '../../contexts/AuthContext';
 import AdminLayout from '../../components/layouts/AdminLayout';
 import AdminDashboardCharts from '../../components/dashboard/AdminDashboardCharts';
 import '../../App.css';
-import { useState, useEffect } from 'react';
 import { tenantAPI } from '../../services/api';
 import { adminAPI } from '../../services/api';
 import MaintenanceRequestDetails from '../../components/maintenance/MaintenanceRequestDetails';
@@ -43,6 +42,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import PaymentHistoryTable from '../../components/payments/PaymentHistoryTable'; 
 
 function AdminDashboard() {
   const { user, logout } = useAuth();
@@ -105,7 +105,7 @@ function AdminDashboard() {
       <Routes>
         <Route path="/" element={<DashboardHome stats={stats} activities={recentActivities} />} />
         <Route path="/tenants" element={<TenantsPlaceholder />} />
-        <Route path="/payments" element={<PaymentsPlaceholder />} />
+        <Route path="/payments" element={<PaymentsPage />} />
         <Route path="/maintenance" element={<MaintenancePlaceholder />} />
         <Route path="/leases" element={<LeasesPlaceholder />} />
       </Routes>
@@ -424,32 +424,47 @@ function TenantsPlaceholder() {
   );
 }
 
-function PaymentsPlaceholder() {
+function PaymentsPage() {
+  const [isConnected, setIsConnected] = useState(false);
 
-    const handleConnectStripe = async () => {
+  useEffect(() => {
+    const checkStripeConnection = async () => {
+      try {
+        const response = await adminAPI.getStripeAccountStatus(); // New API call
+        setIsConnected(response.data.details_submitted);
+      } catch (error) {
+        console.error('Could not check Stripe connection status:', error);
+      }
+    };
+    checkStripeConnection();
+  }, []);
+
+  const handleConnectStripe = async () => {
     try {
-      // You need to create this function in your api.js file
-      const response = await adminAPI.createStripeConnectAccount(); 
+      const response = await adminAPI.createStripeConnectAccount();
       const { onboardingUrl } = response.data;
-      
-      // Redirect the admin to the Stripe onboarding page
       window.location.href = onboardingUrl;
     } catch (error) {
       console.error("Could not create Stripe Connect account:", error);
       alert("Failed to start Stripe connection.");
     }
   };
+
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold tracking-tight">Payment Management</h1>
-      <Card>
-        <CardContent className="p-6">
-                <Button onClick={handleConnectStripe}>
-        Stripe Connect
-      </Button>
-          <p className="text-muted-foreground">Connect with Stripe to Receive Payments</p>
-        </CardContent>
-      </Card>
+      {!isConnected && ( // Conditional rendering
+        <Card>
+          <CardHeader>
+            <CardTitle>Connect with Stripe</CardTitle>
+            <CardDescription>Connect your Stripe account to start receiving payments from tenants.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button onClick={handleConnectStripe}>Connect with Stripe</Button>
+          </CardContent>
+        </Card>
+      )}
+      <PaymentHistoryTable /> {/* Integrated PaymentHistoryTable */}
     </div>
   );
 }
