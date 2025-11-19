@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { adminAPI } from '../../services/api';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -42,28 +43,28 @@ const navigation = [
     href: '/admin/tenants',
     icon: Users,
     current: false,
-    badge: '24'
+    badge: ''
   },
   {
     name: 'Payments',
     href: '/admin/payments',
     icon: CreditCard,
     current: false,
-    badge: '3'
+    badge: ''
   },
   {
     name: 'Maintenance',
     href: '/admin/maintenance',
     icon: Wrench,
     current: false,
-    badge: '5'
+    badge: ''
   },
   {
     name: 'Lease Agreements',
     href: '/admin/leases',
     icon: FileText,
     current: false,
-    badge: '2'
+    badge: ''
   },
   {
     name: 'Properties',
@@ -78,6 +79,12 @@ function AdminLayout({ children }) {
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const [badgeCounts, setBadgeCounts] = useState({
+    tenants: '',
+    payments: '',
+    maintenance: '',
+    properties: ''
+  });
 
   const handleLogout = async () => {
     await logout();
@@ -92,6 +99,32 @@ function AdminLayout({ children }) {
       .toUpperCase();
   };
 
+    useEffect(() => {
+    const fetchBadgeCounts = async () => {
+      try {
+        const response = await adminAPI.getAdminDashboardStats();
+        const data = response.data;
+        setBadgeCounts({
+          tenants: data.totalTenants > 0 ? String(data.totalTenants) : '',
+          payments: data.pendingPayments > 0 ? String(data.pendingPayments) : '', // Assuming pendingPayments will be added to backend
+          maintenance: data.pendingMaintenanceRequests > 0 ? String(data.pendingMaintenanceRequests) : '',
+          properties: data.totalProperties > 0 ? String(data.totalProperties) : ''
+        });
+      } catch (error) {
+        console.error('Error fetching admin dashboard stats:', error);
+      }
+    };
+    fetchBadgeCounts();
+  }, []);
+
+  const navigationWithBadges = navigation.map(item => {
+    if (item.name === 'Tenants') return { ...item, badge: badgeCounts.tenants };
+    if (item.name === 'Payments') return { ...item, badge: badgeCounts.payments };
+    if (item.name === 'Maintenance') return { ...item, badge: badgeCounts.maintenance };
+    if (item.name === 'Properties') return { ...item, badge: badgeCounts.properties };
+    return item;
+  });
+
   const isCurrentPath = (path) => {
     if (path === '/admin') {
       return location.pathname === '/admin' || location.pathname === '/admin/';
@@ -103,14 +136,17 @@ function AdminLayout({ children }) {
     <div className="min-h-screen bg-background">
       {/* Mobile sidebar */}
       <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+        {/* <SheetContent side="left" className="w-64 p-0">
+          <MobileSidebar navigation={navigation} isCurrentPath={isCurrentPath} /> */}
         <SheetContent side="left" className="w-64 p-0">
-          <MobileSidebar navigation={navigation} isCurrentPath={isCurrentPath} />
+          <MobileSidebar navigation={navigationWithBadges} isCurrentPath={isCurrentPath} />
         </SheetContent>
       </Sheet>
 
       {/* Desktop sidebar */}
       <div className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-64 lg:flex-col">
-        <DesktopSidebar navigation={navigation} isCurrentPath={isCurrentPath} />
+        {/* <DesktopSidebar navigation={navigation} isCurrentPath={isCurrentPath} /> */}
+        <DesktopSidebar navigation={navigationWithBadges} isCurrentPath={isCurrentPath} />
       </div>
 
       {/* Main content */}

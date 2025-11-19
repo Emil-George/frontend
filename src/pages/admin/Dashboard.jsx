@@ -460,7 +460,7 @@ function PaymentsPage() {
             <CardDescription>Connect your Stripe account to start receiving payments from tenants.</CardDescription>
           </CardHeader>
           <CardContent>
-            <Button onClick={handleConnectStripe}>Connect with Stripe</Button>
+            <Button onClick={handleConnectStripe}>Connect bank account</Button>
           </CardContent>
         </Card>
       )}

@@ -75,7 +75,14 @@ export const adminAPI = {
   updateMaintenanceStatus: (id, updateData) => api.put(`/maintenance/${id}/status`, updateData),
   
   // Dashboard
-  getDashboardStats: () => api.get('/admin/dashboard/stats'),
+  getAdminDashboardStats: () => api.get('/dashboard/admin'),
+
+  // Property management
+  getAllProperties: () => api.get("/admin/properties"),
+  getPropertyById: (id) => api.get(`/admin/properties/${id}`),
+  createProperty: (propertyData) => api.post("/admin/properties", propertyData),
+  updateProperty: (id, propertyData) => api.put(`/admin/properties/${id}`, propertyData),
+  deleteProperty: (id) => api.delete(`/admin/properties/${id}`),
 };
 
 export const tenantAPI = {
